@@ -1,0 +1,17 @@
+/* Custom chart container styling */
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #eee;
+    font-weight: 600;
+}
+
+canvas {
+    max-width: 100%;
+    margin: 0 auto;
+    display: block;
+}

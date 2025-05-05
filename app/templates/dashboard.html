@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+{% if error_message %}
+<div class="alert alert-danger alert-dismissible fade show">
+    {{ error_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="container-fluid">
+    <!-- Status Cards Row -->
+    <div class="row mb-4">
+        {% set protocols = stats.protocols or {'TCP': 0, 'UDP': 0, 'ICMP': 0, 'Other': 0} %}
+        {% set alerts = stats.alerts or 0 %}
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h6 class="card-title">TOTAL PACKETS</h6>
+                    <h2 class="card-text">{{ stats.total_packets|default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h6 class="card-title">TCP PACKETS</h6>
+                    <h2 class="card-text">{{ protocols.TCP }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h6 class="card-title">UDP PACKETS</h6>
+                    <h2 class="card-text">{{ protocols.UDP }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h6 class="card-title">ALERTS</h6>
+                    <h2 class="card-text">{{ alerts }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row">
+        <!-- Protocol Chart -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Protocol Distribution</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                id="protocolDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            Last 24 Hours
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="protocolDropdown">
+                            <li><a class="dropdown-item" href="#">Last Hour</a></li>
+                            <li><a class="dropdown-item" href="#">Last 24 Hours</a></li>
+                            <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="protocolChart" height="250" aria-label="Protocol Distribution Chart"></canvas>
+                    <div class="mt-3 text-center small">
+                        <span class="me-3">
+                            <i class="fas fa-circle text-primary"></i> TCP
+                        </span>
+                        <span class="me-3">
+                            <i class="fas fa-circle text-success"></i> UDP
+                        </span>
+                        <span class="me-3">
+                            <i class="fas fa-circle text-info"></i> ICMP
+                        </span>
+                        <span class="me-3">
+                            <i class="fas fa-circle text-warning"></i> Other
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Traffic Chart -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Traffic Flow</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                id="trafficDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            Live View
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="trafficDropdown">
+                            <li><a class="dropdown-item" href="#">Live</a></li>
+                            <li><a class="dropdown-item" href="#">Historical</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="trafficChart" height="250" aria-label="Traffic Flow Chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Data -->
+    <div class="row">
+        <!-- Top Talkers -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Talkers</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="talkersTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Packets</th>
+                                    <th>Data Size</th>
+                                    <th>Threat Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for source in stats.top_sources or [] %}
+                                <tr>
+                                    <td>{{ source[0] }}</td>
+                                    <td>{{ source[1] }}</td>
+                                    <td>{{ source[2]|filesizeformat }}</td>
+                                    <td>
+                                        {% if source[1] > 1000 %}
+                                        <span class="badge bg-danger">High</span>
+                                        {% elif source[1] > 500 %}
+                                        <span class="badge bg-warning">Medium</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Low</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No packet data available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Alerts</h6>
+                    <span class="badge bg-danger rounded-pill">{{ alerts }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert-list">
+                        {% for alert in stats.recent_alerts or [] %}
+                        <div class="alert alert-{{ 'danger' if alert.severity == 'high' else 'warning' }} alert-dismissible fade show" role="alert">
+                            <strong>{{ alert.type|default('Alert') }}</strong> - {{ alert.message }}
+                            <small class="text-muted">{{ alert.timestamp|default('') }}</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted py-3">
+                            No recent alerts
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Required Libraries with SRI -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js" 
+        integrity="sha384-9aomKNjJ8+9QqJp6gTqRwJ5+5p5q5f5p5v5v5p5v5p5v5p5v5p5v5p5v5p5v5p5" 
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" 
+        integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl5/5hb8f1b5v5p5v5p5v5p5v5p5v5p5v5p5v5p5v5" 
+        crossorigin="anonymous"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js" 
+        integrity="sha384-9aomKNjJ8+9QqJp6gTqRwJ5+5p5q5f5p5v5v5p5v5p5v5p5v5p5v5p5v5p5v5p5" 
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.5.1/dist/socket.io.min.js" 
+        integrity="sha384-9aomKNjJ8+9QqJp6gTqRwJ5+5p5q5f5p5v5v5p5v5p5v5p5v5p5v5p5v5p5v5p5" 
+        crossorigin="anonymous"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // Parse the JSON data from Flask
+        const statsData = JSON.parse('{{ stats_json|safe }}') || {};
+        
+        // Initialize DataTables with error handling
+        if ($.fn.DataTable) {
+            $('#talkersTable').DataTable({
+                order: [[1, 'desc']],
+                pageLength: 5,
+                responsive: true,
+                language: {
+                    emptyTable: "No packet data available"
+                }
+            });
+        }
+
+        // Initialize Protocol Chart
+        const initProtocolChart = () => {
+            const ctx = document.getElementById('protocolChart')?.getContext('2d');
+            if (!ctx) return;
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statsData.protocols || {}),
+                    datasets: [{
+                        data: Object.values(statsData.protocols || {}),
+                        backgroundColor: [
+                            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e'
+                        ],
+                        hoverBackgroundColor: [
+                            '#2e59d9', '#17a673', '#2c9faf', '#dda20a'
+                        ]
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw} packets`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        // Initialize Traffic Chart
+        const initTrafficChart = () => {
+            const ctx = document.getElementById('trafficChart')?.getContext('2d');
+            if (!ctx) return;
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: statsData.hourly_traffic?.hours || [],
+                    datasets: [{
+                        label: "Packets",
+                        data: statsData.hourly_traffic?.counts || [],
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+
+        initProtocolChart();
+        initTrafficChart();
+
+        // Initialize Socket.IO with error handling
+        try {
+            const socket = io();
+            socket.on('protocol_update', function(data) {
+                console.log('Protocol update received:', data);
+                // Implement real-time updates here
+            });
+        } catch (e) {
+            console.error("Socket.IO initialization failed:", e);
+        }
+
+    } catch (e) {
+        console.error("Dashboard initialization error:", e);
+    }
+});
+</script>
+{% endblock %}
